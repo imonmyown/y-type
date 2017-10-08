@@ -1,4 +1,5 @@
 require "crsfml"
+require "./generator"
 
 class TypingWidget < SF::Transformable
   include SF::Drawable
@@ -11,7 +12,9 @@ class TypingWidget < SF::Transformable
     @cur_text = SF::Text.new("", font, character_size)
     @cur_text.color = SF::Color::Black
     @selection_color = SF::Color.new(0x3d, 0xae, 0xe9)
-    @lines = [make_text("")] of SF::Text
+    @generator = Generator.load
+    @clock = SF::Clock.new
+    @lines = [make_text(@generator.generate(48))] of SF::Text
     # Cursor position: line, column
     @y = 0
     @x = 0
@@ -27,6 +30,11 @@ class TypingWidget < SF::Transformable
     @cur_clock = SF::Clock.new
 
     update_cursor()
+  end
+
+  def finalize
+    super
+    @generator.finalize
   end
 
   property selection_color : SF::Color
@@ -296,15 +304,21 @@ class TypingWidget < SF::Transformable
     when SF::Event::TextEntered
       if event.unicode >= ' '.ord && event.unicode != 0x7f  # control chars and delete
         delete_selection()
-        set line[0...@x] + event.unicode.chr + line[@x..-1]
-        @x += 1
-        update_cursor()
+        ch = event.unicode.chr
+        if ch == line[@x]
+          set line[0...@x] + ' ' + line[@x+1..-1]
+          @x += 1
+          puts "#{ch} #{@clock.elapsed_time.as_seconds}"
+          @clock.restart
+          update_cursor()
+        end
+        #set line[0...@x] + event.unicode.chr + line[@x..-1]
       end
-    when SF::Event::MouseButtonPressed
-      click(event.x - position.x, event.y - position.y)
-      update_cursor()
-    when SF::Event::MouseMoved
-      click(event.x - position.x, event.y - position.y) if SF::Mouse.button_pressed?(SF::Mouse::Left)
+    # when SF::Event::MouseButtonPressed
+    #   click(event.x - position.x, event.y - position.y)
+    #   update_cursor()
+    # when SF::Event::MouseMoved
+    #   click(event.x - position.x, event.y - position.y) if SF::Mouse.button_pressed?(SF::Mouse::Left)
     end
   end
 
@@ -351,10 +365,29 @@ class TypingWidget < SF::Transformable
   end
 end
 
-def main()  # A hack to allow the code above to be reused: `require` and override `main`
-  window = SF::RenderWindow.new(SF::VideoMode.new(800, 600), "Typing")
-  puts `pwd`
-  text = TypingWidget.new(SF::Font.from_file("font/SpecialElite.ttf"), 24)
+private def center(window)
+  dim = SF::VideoMode.desktop_mode
+  pos, size = window.position, window.size
+  x = pos.x + (dim.width - size.x) / 2
+  y = pos.y + (dim.height - size.y) / 2
+  #puts window.position
+  window.position = {x, y}
+  #puts window.position
+
+  #int x = screenBounds.x + (screenBounds.width - windowSize.width) / 2;
+  #int y = screenBounds.y + (screenBounds.height - windowSize.height) / 2;
+
+  #window.setBounds(x, y, windowSize.width, windowSize.height);  
+end
+
+def main()  # A hack to allow the code above to be reused: `require` and override `main
+  height = (SF::VideoMode.desktop_mode.height * 0.065).to_i
+  font = SF::Font.from_file("font/SpecialElite.ttf")
+  spacing = font.get_line_spacing(height).to_i32 / 2
+  window = SF::RenderWindow.new(SF::VideoMode.new(SF::VideoMode.desktop_mode.width, height + spacing), "Y-Type")
+  text = TypingWidget.new(font, height)
+  window.position = {0, 320}
+  #center(window)
 
   while window.open?
     while event = window.poll_event
@@ -369,6 +402,8 @@ def main()  # A hack to allow the code above to be reused: `require` and overrid
     window.draw text
     window.display()
   end
+
+  text.finalize
 end
 
 main()
