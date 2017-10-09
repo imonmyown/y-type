@@ -1,3 +1,6 @@
+# Code taken from CrSFML typing example
+# https://github.com/oprypin/crsfml
+
 require "crsfml"
 require "./generator"
 
