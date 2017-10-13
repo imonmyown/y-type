@@ -1,6 +1,10 @@
 require "yaml"
 
 class Array(T)
+  def mean
+    self.sum / self.size
+  end
+
   def normalize
     max = self.max
     self.map {|x| x.to_f / max }
@@ -15,8 +19,6 @@ class Array(T)
     a = self.normalize
     # fill zeroes in updated frequencies by original values
     b = a.zip(other).map {|x, y| y == 0.0 ? x : y }
-    puts a
-    puts b
     # produce a weighted average
     result = a.zip(b) {|x, y| (x + weight*y) / (1 + weight) }
     puts result
