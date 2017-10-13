@@ -35,9 +35,8 @@ class TypingWidget < SF::Transformable
     update_cursor()
   end
 
-  def finalize
-    super
-    @generator.finalize
+  def close
+    @generator.update_stats
   end
 
   property selection_color : SF::Color
@@ -311,7 +310,7 @@ class TypingWidget < SF::Transformable
         if ch == line[@x]
           set line[0...@x] + ' ' + line[@x+1..-1]
           @x += 1
-          puts "#{ch} #{@clock.elapsed_time.as_seconds}"
+          @generator.bump(ch, @clock.elapsed_time.as_seconds)
           @clock.restart
           update_cursor()
         end
@@ -383,7 +382,7 @@ private def center(window)
   #window.setBounds(x, y, windowSize.width, windowSize.height);  
 end
 
-def main()  # A hack to allow the code above to be reused: `require` and override `main
+def main  # A hack to allow the code above to be reused: `require` and override `main
   height = (SF::VideoMode.desktop_mode.height * 0.065).to_i
   font = SF::Font.from_file("font/SpecialElite.ttf")
   spacing = font.get_line_spacing(height).to_i32 / 2
@@ -392,21 +391,23 @@ def main()  # A hack to allow the code above to be reused: `require` and overrid
   window.position = {0, 320}
   #center(window)
 
-  while window.open?
-    while event = window.poll_event
-      case event
-      when SF::Event::Closed
-        window.close()
-      else
-        text.input(event)
+  begin
+    while window.open?
+      while event = window.poll_event
+        case event
+        when SF::Event::Closed
+          window.close()
+        else
+          text.input(event)
+        end
       end
+      window.clear SF::Color::White
+      window.draw text
+      window.display()
     end
-    window.clear SF::Color::White
-    window.draw text
-    window.display()
+  ensure
+    text.close
   end
-
-  text.finalize
 end
 
-main()
+main
